@@ -1,13 +1,15 @@
-FROM node:20.9.0 as builder
+FROM node:20.9.0 AS builder
 WORKDIR /app
-RUN curl -o- -L https://yarnpkg.com/install.sh | bash
-# RUN yarn config set registry https://registry.npm.taobao.org -g
-# RUN npm config set registry https://registry.npm.taobao.org
+
+ARG YARN_REGISTRY=https://registry.npmmirror.com
+RUN yarn config set registry ${YARN_REGISTRY} \
+  && yarn config set network-timeout 600000
+
 COPY . .
-RUN yarn install && yarn build
+RUN yarn install --frozen-lockfile --network-timeout 600000 && yarn build
 
 FROM nginx:latest
-COPY --from=builder /app/docker-entrypoint.sh /docker-entrypoint2.sh 
+COPY --from=builder /app/docker-entrypoint.sh /docker-entrypoint2.sh
 RUN sed -i 's/\r$//' /docker-entrypoint2.sh
 COPY --from=builder /app/nginx.conf.template /
 COPY --from=builder /app/apps/web/build /usr/share/nginx/html
